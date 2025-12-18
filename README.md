@@ -38,11 +38,34 @@ Add this repository to your `flake.nix` inputs:
 }
 ```
 
-### 2. Install Packages
+### 2. NixOS Configuration (Module)
 
-#### NixOS Configuration
+This flake exports a NixOS module that allows you to configure Brave Nightly and Beta similarly to the standard `programs.chromium` module.
 
-In your `configuration.nix` (ensure you pass the input via `specialArgs` if using `nixosSystem`):
+```nix
+{ pkgs, brave-previews, ... }:
+
+{
+  imports = [
+    brave-previews.nixosModules.default
+  ];
+
+  programs.brave-nightly = {
+    enable = true;
+    extensions = [
+      "cjpalhdlnbpafiamejdnhcphjbkeiagm" # uBlock Origin
+    ];
+    defaultSearchProviderSearchURL = "https://search.brave.com/search?q={searchTerms}";
+  };
+
+  # You can also configure Beta independently
+  programs.brave-beta.enable = true;
+}
+```
+
+### 3. Install Packages (Ad-hoc)
+
+If you just want the packages without the configuration module:
 
 ```nix
 { pkgs, brave-previews, ... }:
@@ -50,8 +73,6 @@ In your `configuration.nix` (ensure you pass the input via `specialArgs` if usin
 {
   environment.systemPackages = [
     brave-previews.packages.${pkgs.system}.brave-nightly
-    # and/or
-    brave-previews.packages.${pkgs.system}.brave-beta
   ];
 }
 ```
@@ -70,7 +91,7 @@ In your `home.nix`:
 }
 ```
 
-### 3. Run Directly
+### 4. Run Directly
 
 You can also run the browsers without installing them:
 
