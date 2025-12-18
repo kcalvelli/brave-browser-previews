@@ -44,9 +44,9 @@ update_channel() {
   echo "Hash: $HASH"
 
   # Update the nix file
-  # We look for `version = "..."` and `sha256 = "..."`
-  sed -i "s/version = ".*";/version = \"$VERSION\";/" "$TARGET_FILE"
-  sed -i "s/sha256 = ".*";/sha256 = \"$HASH\";/" "$TARGET_FILE"
+  # We look for `version = "..."` and `hash = "..."`
+  sed -i "s/version = \".*\";/version = \"$VERSION\";/" "$TARGET_FILE"
+  sed -i "s/hash = \".*\";/hash = \"$HASH\";/" "$TARGET_FILE"
 
   echo "Updated $TARGET_FILE with version $VERSION and hash $HASH"
   echo "--------------------------------------------------"
