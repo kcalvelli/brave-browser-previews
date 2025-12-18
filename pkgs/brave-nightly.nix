@@ -1,4 +1,4 @@
-{ stdenv, lib, fetchurl, dpkg, makeWrapper, autoPatchelfHook, alsa-lib, at-spi2-atk, at-spi2-core, atk, cairo, cups, dbus, expat, fontconfig, freetype, gdk-pixbuf, glib, gtk3, libdrm, libX11, libXcomposite, libXcursor, libXdamage, libXext, libXfixes, libXi, libXrandr, libXrender, libXScrnSaver, libxshmfence, libXtst, mesa, nspr, nss, pango, udev, xdg-utils, libxcb, libglvnd, wayland, pipewire, libxkbcommon }:
+{ stdenv, lib, fetchurl, dpkg, makeWrapper, autoPatchelfHook, alsa-lib, at-spi2-atk, at-spi2-core, atk, cairo, cups, dbus, expat, fontconfig, freetype, gdk-pixbuf, glib, gtk3, libdrm, libX11, libXcomposite, libXcursor, libXdamage, libXext, libXfixes, libXi, libXrandr, libXrender, libXScrnSaver, libxshmfence, libXtst, mesa, nspr, nss, pango, udev, xdg-utils, libxcb, libglvnd, wayland, pipewire, libxkbcommon, vulkan-loader }:
 
 stdenv.mkDerivation rec {
   pname = "brave-nightly";
@@ -48,6 +48,7 @@ stdenv.mkDerivation rec {
     wayland
     pipewire
     libxkbcommon
+    vulkan-loader
   ];
 
   autoPatchelfIgnoreMissingDeps = [
@@ -75,6 +76,8 @@ stdenv.mkDerivation rec {
     makeWrapper $out/opt/brave.com/brave-nightly/brave-browser-nightly $out/bin/brave-nightly \
       --add-flags "--enable-features=BraveAIChatAgentProfile" \
       --add-flags "--ozone-platform-hint=auto" \
+      --add-flags "--enable-features=UseOzonePlatform" \
+      --add-flags "\''${WAYLAND_DISPLAY:+--ozone-platform=wayland}" \
       --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath buildInputs} \
       --prefix XDG_DATA_DIRS : "$out/share"
 
