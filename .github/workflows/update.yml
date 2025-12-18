@@ -33,4 +33,4 @@ jobs:
         with:
           commit_message: "chore: update brave versions"
           file_pattern: pkgs/*.nix
-          branch: main
+          branch: master
