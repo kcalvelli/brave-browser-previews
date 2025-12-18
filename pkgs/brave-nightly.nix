@@ -1,4 +1,4 @@
-{ stdenv, lib, fetchurl, dpkg, makeWrapper, autoPatchelfHook, alsa-lib, at-spi2-atk, at-spi2-core, atk, cairo, cups, dbus, expat, fontconfig, freetype, gdk-pixbuf, glib, gtk3, libdrm, libX11, libXcomposite, libXcursor, libXdamage, libXext, libXfixes, libXi, libXrandr, libXrender, libXScrnSaver, libxshmfence, libXtst, mesa, nspr, nss, pango, udev, xdg-utils, libxcb, libglvnd }:
+{ stdenv, lib, fetchurl, dpkg, makeWrapper, autoPatchelfHook, alsa-lib, at-spi2-atk, at-spi2-core, atk, cairo, cups, dbus, expat, fontconfig, freetype, gdk-pixbuf, glib, gtk3, libdrm, libX11, libXcomposite, libXcursor, libXdamage, libXext, libXfixes, libXi, libXrandr, libXrender, libXScrnSaver, libxshmfence, libXtst, mesa, nspr, nss, pango, udev, xdg-utils, libxcb, libglvnd, wayland, pipewire, libxkbcommon }:
 
 stdenv.mkDerivation rec {
   pname = "brave-nightly";
@@ -45,6 +45,9 @@ stdenv.mkDerivation rec {
     udev
     libxcb
     libglvnd
+    wayland
+    pipewire
+    libxkbcommon
   ];
 
   autoPatchelfIgnoreMissingDeps = [
@@ -62,16 +65,24 @@ stdenv.mkDerivation rec {
   '';
 
   installPhase = ''
+    mkdir -p $out/opt
+    cp -r opt/brave.com $out/opt/
+
+    mkdir -p $out/share
+    cp -r usr/share/* $out/share/
+
     mkdir -p $out/bin
-    cp -r opt/brave.com/brave-nightly/* $out/
-
-    # Link the binary to the output bin directory
-    ln -s $out/brave-browser-nightly $out/bin/brave-nightly
-
-    # Wrap the binary
-    wrapProgram $out/bin/brave-nightly \
+    makeWrapper $out/opt/brave.com/brave-nightly/brave-browser-nightly $out/bin/brave-nightly \
       --add-flags "--enable-features=BraveAIChatAgentProfile" \
-      --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath buildInputs}
+      --add-flags "--ozone-platform-hint=auto" \
+      --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath buildInputs} \
+      --prefix XDG_DATA_DIRS : "$out/share"
+
+    # Patch the desktop file
+    if [ -f "$out/share/applications/brave-browser-nightly.desktop" ]; then
+      substituteInPlace "$out/share/applications/brave-browser-nightly.desktop" \
+        --replace "/usr/bin/brave-browser-nightly" "brave-nightly"
+    fi
   '';
 
   meta = with lib; {
