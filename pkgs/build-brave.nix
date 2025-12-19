@@ -200,26 +200,28 @@ stdenv.mkDerivation {
       cp -R usr/share $out
       cp -R opt/ $out/opt
 
+      # Determine the brave variant directory and binary wrapper
       if [ -d $out/opt/brave.com/brave-beta ]; then
-        mv $out/opt/brave.com/brave-beta $out/opt/brave.com/brave
-        mv $out/opt/brave.com/brave/brave-browser-beta $out/opt/brave.com/brave/brave-browser
-        mv $out/share/applications/brave-browser-beta.desktop $out/share/applications/brave-browser.desktop
+        BRAVE_DIR="brave-beta"
+        BRAVE_BINARY="brave-browser-beta"
       elif [ -d $out/opt/brave.com/brave-nightly ]; then
-        mv $out/opt/brave.com/brave-nightly $out/opt/brave.com/brave
-        mv $out/opt/brave.com/brave/brave-browser-nightly $out/opt/brave.com/brave/brave-browser
-        mv $out/share/applications/brave-browser-nightly.desktop $out/share/applications/brave-browser.desktop
+        BRAVE_DIR="brave-nightly"
+        BRAVE_BINARY="brave-browser-nightly"
+      else
+        echo "Error: Could not find brave-beta or brave-nightly directory"
+        exit 1
       fi
 
-      export BINARYWRAPPER=$out/opt/brave.com/brave/brave-browser
+      export BINARYWRAPPER=$out/opt/brave.com/$BRAVE_DIR/$BRAVE_BINARY
 
       # Fix path to bash in $BINARYWRAPPER
       substituteInPlace $BINARYWRAPPER \
           --replace-fail /bin/bash ${stdenv.shell} \
           --replace-fail 'CHROME_WRAPPER' 'WRAPPER'
 
-      ln -sf $BINARYWRAPPER $out/bin/brave
+      ln -sf $BINARYWRAPPER $out/bin/${pname}
 
-      for exe in $out/opt/brave.com/brave/{brave,chrome_crashpad_handler}; do
+      for exe in $out/opt/brave.com/$BRAVE_DIR/{brave,chrome_crashpad_handler}; do
           patchelf \
               --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" \
               --set-rpath "${rpath}" $exe
@@ -227,15 +229,15 @@ stdenv.mkDerivation {
 
       # Fix paths
       substituteInPlace $out/share/applications/*.desktop \
-          --replace-warn /usr/bin/brave-browser-stable $out/bin/brave \
-          --replace-warn /usr/bin/brave-browser-beta $out/bin/brave \
-          --replace-warn /usr/bin/brave-browser-nightly $out/bin/brave
+          --replace-warn /usr/bin/brave-browser-stable $out/bin/${pname} \
+          --replace-warn /usr/bin/brave-browser-beta $out/bin/${pname} \
+          --replace-warn /usr/bin/brave-browser-nightly $out/bin/${pname}
       if [ -d $out/share/gnome-control-center/default-apps ]; then
         substituteInPlace $out/share/gnome-control-center/default-apps/*.xml \
             --replace-fail /opt/brave.com $out/opt/brave.com
       fi
-      if [ -f $out/opt/brave.com/brave/default-app-block ]; then
-        substituteInPlace $out/opt/brave.com/brave/default-app-block \
+      if [ -f $out/opt/brave.com/$BRAVE_DIR/default-app-block ]; then
+        substituteInPlace $out/opt/brave.com/$BRAVE_DIR/default-app-block \
             --replace-fail /opt/brave.com $out/opt/brave.com
       fi
 
@@ -245,17 +247,17 @@ stdenv.mkDerivation {
       for icon in ''${icon_sizes[*]}
       do
           mkdir -p $out/share/icons/hicolor/$icon\x$icon/apps
-          ICON_FILE=$(find $out/opt/brave.com/brave -name "product_logo_$icon*.png" | head -n 1)
+          ICON_FILE=$(find $out/opt/brave.com/$BRAVE_DIR -name "product_logo_$icon*.png" | head -n 1)
           if [ -n "$ICON_FILE" ]; then
-            ln -s "$ICON_FILE" $out/share/icons/hicolor/$icon\x$icon/apps/brave-browser.png
+            ln -s "$ICON_FILE" $out/share/icons/hicolor/$icon\x$icon/apps/$BRAVE_BINARY.png
           else
             echo "Warning: Icon product_logo_$icon not found"
           fi
       done
 
       # Replace xdg-settings and xdg-mime
-      ln -sf ${xdg-utils}/bin/xdg-settings $out/opt/brave.com/brave/xdg-settings
-      ln -sf ${xdg-utils}/bin/xdg-mime $out/opt/brave.com/brave/xdg-mime
+      ln -sf ${xdg-utils}/bin/xdg-settings $out/opt/brave.com/$BRAVE_DIR/xdg-settings
+      ln -sf ${xdg-utils}/bin/xdg-mime $out/opt/brave.com/$BRAVE_DIR/xdg-mime
 
       runHook postInstall
     ''
@@ -266,7 +268,7 @@ stdenv.mkDerivation {
 
       cp -r . "$out/Applications/Brave Browser.app"
 
-      makeWrapper "$out/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" $out/bin/brave
+      makeWrapper "$out/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" $out/bin/${pname}
 
       runHook postInstall
     '';
@@ -296,8 +298,8 @@ stdenv.mkDerivation {
   '';
 
   installCheckPhase = ''
-    # Bypass upstream wrapper which suppresses errors
-    $out/opt/brave.com/brave/brave --version
+    # Check that the wrapper works correctly
+    $out/bin/${pname} --version
   '';
 
   passthru.updateScript = ./update.sh;
@@ -330,6 +332,6 @@ stdenv.mkDerivation {
       "aarch64-darwin"
       "x86_64-darwin"
     ];
-    mainProgram = "brave";
+    mainProgram = pname;
   };
 }
