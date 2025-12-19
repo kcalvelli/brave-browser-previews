@@ -232,6 +232,13 @@ stdenv.mkDerivation {
           --replace-warn /usr/bin/brave-browser-stable $out/bin/${pname} \
           --replace-warn /usr/bin/brave-browser-beta $out/bin/${pname} \
           --replace-warn /usr/bin/brave-browser-nightly $out/bin/${pname}
+
+      # Add StartupWMClass for proper application identification in Wayland compositors
+      for desktop in $out/share/applications/*.desktop; do
+        if ! grep -q "^StartupWMClass=" "$desktop"; then
+          echo "StartupWMClass=${pname}" >> "$desktop"
+        fi
+      done
       if [ -d $out/share/gnome-control-center/default-apps ]; then
         substituteInPlace $out/share/gnome-control-center/default-apps/*.xml \
             --replace-fail /opt/brave.com $out/opt/brave.com
