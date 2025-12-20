@@ -61,7 +61,8 @@
   # For GPU acceleration support on Wayland (without the lib it doesn't seem to work)
   libGL,
 
-  # For video acceleration via VA-API (--enable-features=VaapiVideoDecoder,VaapiVideoEncoder)
+  # For video acceleration via VA-API (--enable-features=AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder)
+  # Note: Chrome 131+ renamed VaapiVideo* to AcceleratedVideo* flags
   libvaSupport ? stdenv.hostPlatform.isLinux,
   libva,
   enableVideoAcceleration ? libvaSupport,
@@ -142,10 +143,10 @@ let
   rpath = makeLibraryPath deps + ":" + makeSearchPathOutput "lib" "lib64" deps;
   binpath = makeBinPath deps;
 
-  enableFeatures = 
+  enableFeatures =
     optionals enableVideoAcceleration [
-      "VaapiVideoDecoder"
-      "VaapiVideoEncoder"
+      "AcceleratedVideoDecodeLinuxGL"
+      "AcceleratedVideoEncoder"
     ]
     ++ optional enableVulkan "Vulkan";
 
@@ -281,27 +282,31 @@ stdenv.mkDerivation {
     '';
 
   preFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
-    # Add command line args to wrapGApp.
-    gappsWrapperArgs+=(
-      --prefix LD_LIBRARY_PATH : ${rpath}
-      --prefix PATH : ${binpath}
-      --suffix PATH : ${ 
-        lib.makeBinPath [
-          xdg-utils
-          coreutils
-        ]
-      }
-      --set CHROME_WRAPPER ${pname}
-      ${optionalString (enableFeatures != [ ]) "--add-flags \"--enable-features=${strings.concatStringsSep "," enableFeatures}\
+        # Add command line args to wrapGApp.
+        gappsWrapperArgs+=(
+          --prefix LD_LIBRARY_PATH : ${rpath}
+          --prefix PATH : ${binpath}
+          --suffix PATH : ${
+            lib.makeBinPath [
+              xdg-utils
+              coreutils
+            ]
+          }
+          --set CHROME_WRAPPER ${pname}
+          ${optionalString (enableFeatures != [ ])
+            "--add-flags \"--enable-features=${strings.concatStringsSep "," enableFeatures}\
 ''\${NIXOS_OZONE_WL:+
-''\${WAYLAND_DISPLAY:+,WaylandWindowDecorations --enable-wayland-ime=true}}\""}
-      ${optionalString (disableFeatures != [ ]) "--add-flags \"--disable-features=${strings.concatStringsSep "," disableFeatures}\""}
-      --add-flags "
-''\${NIXOS_OZONE_WL:+
-''\${WAYLAND_DISPLAY:+"--ozone-platform-hint=auto"}}"
-      ${optionalString vulkanSupport "--prefix XDG_DATA_DIRS  : \"${addDriverRunpath.driverLink}/share\""}
-      --add-flags ${escapeShellArg commandLineArgs}
-    )
+''\${WAYLAND_DISPLAY:+,WaylandWindowDecorations --enable-wayland-ime=true}}\""
+          }
+          ${optionalString (
+            disableFeatures != [ ]
+          ) "--add-flags \"--disable-features=${strings.concatStringsSep "," disableFeatures}\""}
+          --add-flags "
+    ''\${NIXOS_OZONE_WL:+
+    ''\${WAYLAND_DISPLAY:+"--ozone-platform-hint=auto"}}"
+          ${optionalString vulkanSupport "--prefix XDG_DATA_DIRS  : \"${addDriverRunpath.driverLink}/share\""}
+          --add-flags ${escapeShellArg commandLineArgs}
+        )
   '';
 
   installCheckPhase = ''
@@ -315,7 +320,7 @@ stdenv.mkDerivation {
     homepage = "https://brave.com/";
     description = "Privacy-oriented browser for Desktop and Laptop computers";
     changelog =
-      "https://github.com/brave/brave-browser/blob/master/CHANGELOG_DESKTOP.md#" 
+      "https://github.com/brave/brave-browser/blob/master/CHANGELOG_DESKTOP.md#"
       + lib.replaceStrings [ "." ] [ "" ] version;
     longDescription = ''
       Brave browser blocks the ads and trackers that slow you down,
@@ -324,16 +329,15 @@ stdenv.mkDerivation {
     '';
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     license = lib.licenses.mpl20;
-    maintainers = with lib.maintainers;
-      [
-        uskudnik
-        rht
-        jefflabonte
-        nasirhm
-        buckley310
-        matteopacini
-      ];
-    platforms = [ 
+    maintainers = with lib.maintainers; [
+      uskudnik
+      rht
+      jefflabonte
+      nasirhm
+      buckley310
+      matteopacini
+    ];
+    platforms = [
       "aarch64-linux"
       "x86_64-linux"
       "aarch64-darwin"
