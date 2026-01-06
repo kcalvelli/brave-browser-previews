@@ -73,9 +73,15 @@ let
       config = mkIf cfg.enable {
         environment.systemPackages = [
           (if cfg.commandLineArgs != [] then
-            pkgs.writeShellScriptBin pkgName ''
-              exec ${cfg.package}/bin/${pkgName} ${lib.escapeShellArgs cfg.commandLineArgs} "$@"
-            ''
+            pkgs.symlinkJoin {
+              name = "${cfg.package.name}-wrapped";
+              paths = [ cfg.package ];
+              buildInputs = [ pkgs.makeWrapper ];
+              postBuild = ''
+                wrapProgram $out/bin/${pkgName} \
+                  --add-flags ${lib.escapeShellArgs cfg.commandLineArgs}
+              '';
+            }
           else
             cfg.package)
         ];
