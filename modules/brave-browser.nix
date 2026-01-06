@@ -79,7 +79,7 @@ let
               buildInputs = [ pkgs.makeWrapper ];
               postBuild = ''
                 wrapProgram $out/bin/${pkgName} \
-                  --add-flags ${lib.escapeShellArgs cfg.commandLineArgs}
+                  --add-flags "${lib.escapeShellArgs cfg.commandLineArgs}"
               '';
             }
           else
