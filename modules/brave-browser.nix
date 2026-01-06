@@ -71,7 +71,14 @@ let
       };
 
       config = mkIf cfg.enable {
-        environment.systemPackages = [ cfg.package ];
+        environment.systemPackages = [
+          (if cfg.commandLineArgs != [] then
+            pkgs.writeShellScriptBin pkgName ''
+              exec ${cfg.package}/bin/${pkgName} ${lib.escapeShellArgs cfg.commandLineArgs} "$@"
+            ''
+          else
+            cfg.package)
+        ];
 
         environment.etc."${policyDir}/managed/${name}.json".text = builtins.toJSON (
           {
