@@ -44,9 +44,9 @@ update_channel() {
   echo "Hash: $HASH"
 
   # Update the nix file
-  # We look for `version = "..."` and `hash = "..."`
   sed -i "s/version = \".*\";/version = \"$VERSION\";/" "$TARGET_FILE"
   sed -i "s/hash = \".*\";/hash = \"$HASH\";/" "$TARGET_FILE"
+  sed -i "s|url = \".*\";|url = \"$ASSET_URL\";|" "$TARGET_FILE"
 
   echo "Updated $TARGET_FILE with version $VERSION and hash $HASH"
   echo "--------------------------------------------------"
@@ -96,6 +96,7 @@ update_apt_channel() {
 
   sed -i "s|version = \".*\";|version = \"$VERSION\";|" "$TARGET_FILE"
   sed -i "s|hash = \".*\";|hash = \"$HASH\";|" "$TARGET_FILE"
+  sed -i "s|url = \".*\";|url = \"$ASSET_URL\";|" "$TARGET_FILE"
 
   echo "Updated $TARGET_FILE with version $VERSION and hash $HASH"
   echo "--------------------------------------------------"

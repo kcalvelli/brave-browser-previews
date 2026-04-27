@@ -204,18 +204,20 @@ stdenv.mkDerivation {
       # Determine the brave variant directory and binary wrapper.
       # Standard channels live at /opt/brave.com/brave-<channel>/brave-browser-<channel>;
       # Origin uses /opt/brave.com/brave-origin-<channel>/brave-origin-<channel> (no brave-browser- prefix).
-      if [ -d $out/opt/brave.com/brave-beta ]; then
-        BRAVE_DIR="brave-beta"
-        BRAVE_BINARY="brave-browser-beta"
-      elif [ -d $out/opt/brave.com/brave-nightly ]; then
-        BRAVE_DIR="brave-nightly"
-        BRAVE_BINARY="brave-browser-nightly"
-      elif [ -d $out/opt/brave.com/brave-origin-nightly ]; then
-        BRAVE_DIR="brave-origin-nightly"
-        BRAVE_BINARY="brave-origin-nightly"
-      else
-        echo "Error: Could not find a known brave variant directory under $out/opt/brave.com"
+      # Detect the brave variant directory — Brave ships standard channels
+      # under brave-<channel> and origin builds under brave-origin-<channel>.
+      BRAVE_DIR=$(ls $out/opt/brave.com/ | head -n 1)
+      if [ -z "$BRAVE_DIR" ]; then
+        echo "Error: No directory found under $out/opt/brave.com"
         exit 1
+      fi
+
+      # Standard channels use brave-browser-<channel> as the binary name;
+      # origin builds use brave-origin-<channel>.
+      if [ -f "$out/opt/brave.com/$BRAVE_DIR/brave-browser-${BRAVE_DIR##brave-}" ]; then
+        BRAVE_BINARY="brave-browser-${BRAVE_DIR##brave-}"
+      else
+        BRAVE_BINARY="$BRAVE_DIR"
       fi
 
       export BINARYWRAPPER=$out/opt/brave.com/$BRAVE_DIR/$BRAVE_BINARY
@@ -233,12 +235,10 @@ stdenv.mkDerivation {
               --set-rpath "${rpath}" $exe
       done
 
-      # Fix paths
-      substituteInPlace $out/share/applications/*.desktop \
-          --replace-warn /usr/bin/brave-browser-stable $out/bin/${pname} \
-          --replace-warn /usr/bin/brave-browser-beta $out/bin/${pname} \
-          --replace-warn /usr/bin/brave-browser-nightly $out/bin/${pname} \
-          --replace-warn /usr/bin/brave-origin-nightly $out/bin/${pname}
+      # Fix paths — replace whatever /usr/bin/* binary the .desktop file references
+      for desktop in $out/share/applications/*.desktop; do
+        sed -i "s|/usr/bin/[^ ]*|$out/bin/${pname}|g" "$desktop"
+      done
 
       # Add StartupWMClass for proper application identification in Wayland compositors
       for desktop in $out/share/applications/*.desktop; do
