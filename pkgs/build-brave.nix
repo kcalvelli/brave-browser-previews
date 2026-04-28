@@ -214,8 +214,8 @@ stdenv.mkDerivation {
 
       # Standard channels use brave-browser-<channel> as the binary name;
       # origin builds use brave-origin-<channel>.
-      if [ -f "$out/opt/brave.com/$BRAVE_DIR/brave-browser-${BRAVE_DIR##brave-}" ]; then
-        BRAVE_BINARY="brave-browser-${BRAVE_DIR##brave-}"
+      if [ -f "$out/opt/brave.com/$BRAVE_DIR/brave-browser-''${BRAVE_DIR##brave-}" ]; then
+        BRAVE_BINARY="brave-browser-''${BRAVE_DIR##brave-}"
       else
         BRAVE_BINARY="$BRAVE_DIR"
       fi
