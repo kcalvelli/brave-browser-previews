@@ -62,29 +62,27 @@ update_apt_channel() {
   # Brave Origin isn't published to GitHub releases, so we read the apt
   # repo's Packages index directly and pick the highest version.
   local PACKAGES_URL="https://${APT_HOST}/dists/stable/main/binary-amd64/Packages"
-  local ENTRY
-  ENTRY=$(curl -s "$PACKAGES_URL" | awk -v pkg="$PKG_NAME" '
-    BEGIN { RS = ""; FS = "\n" }
-    {
-      for (i = 1; i <= NF; i++) {
-        if ($i == "Package: " pkg) { print; next }
-      }
-    }
-  ' | awk '
-    /^Version:/ { ver = $2; block = $0 "\n"; next }
-    /^$/ { if (ver) { print ver "\t" block; ver = ""; block = "" }; next }
-    { block = block $0 "\n" }
-    END { if (ver) print ver "\t" block }
-  ' | sort -V -k1,1 | tail -n 1 | cut -f2-)
+  local PACKAGES
+  PACKAGES=$(curl -s "$PACKAGES_URL")
 
-  if [ -z "$ENTRY" ]; then
+  # Extract version+filename pairs for the target package, pick highest version.
+  local BEST
+  BEST=$(echo "$PACKAGES" | awk -v pkg="$PKG_NAME" '
+    /^Package:/ { in_pkg = ($2 == pkg) }
+    in_pkg && /^Version:/ { ver = $2 }
+    in_pkg && /^Filename:/ { file = $2 }
+    /^$/ && in_pkg && ver && file { print ver "\t" file; ver = ""; file = "" }
+    END { if (in_pkg && ver && file) print ver "\t" file }
+  ' | sort -V -k1,1 | tail -n 1)
+
+  if [ -z "$BEST" ]; then
     echo "Error: Could not find $PKG_NAME in $PACKAGES_URL"
     return 1
   fi
 
   local VERSION FILENAME ASSET_URL HASH
-  VERSION=$(echo "$ENTRY" | awk '/^Version:/ { print $2; exit }')
-  FILENAME=$(echo "$ENTRY" | awk '/^Filename:/ { print $2; exit }')
+  VERSION=$(echo "$BEST" | cut -f1)
+  FILENAME=$(echo "$BEST" | cut -f2)
   ASSET_URL="https://${APT_HOST}/${FILENAME}"
 
   echo "Latest $PKG_NAME version: $VERSION"
