@@ -103,3 +103,4 @@ update_apt_channel() {
 update_channel "Nightly" "pkgs/brave-nightly.nix"
 update_channel "Beta" "pkgs/brave-beta.nix"
 update_apt_channel "brave-browser-apt-nightly.s3.brave.com" "brave-origin-nightly" "pkgs/brave-origin-nightly.nix"
+update_apt_channel "brave-browser-apt-beta.s3.brave.com" "brave-origin-beta" "pkgs/brave-origin-beta.nix"
