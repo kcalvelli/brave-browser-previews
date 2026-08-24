@@ -1,11 +1,11 @@
 { callPackage, fetchurl }:
 let
-  version = "1.96.8";
-  hash = "1nlb7ha4fkxynqk8ixn7nl78cmv7rj61bbk541jmnydyvam5h1k7";
+  version = "1.96.9";
+  hash = "16w72zrzlb82zqdxxkrlqdisc6akn7bihvynaxld68igmrm2csdl";
 in
 callPackage ./build-brave.nix { } {
   pname = "brave-nightly";
   inherit version hash;
-  url = "https://github.com/brave/brave-browser/releases/download/v1.96.8/brave-browser-nightly_1.96.8_amd64.deb";
+  url = "https://github.com/brave/brave-browser/releases/download/v1.96.9/brave-browser-nightly_1.96.9_amd64.deb";
   commandLineArgs = "--enable-features=BraveAIChatAgentProfile";
 }
