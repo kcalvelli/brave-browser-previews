@@ -1,121 +1,115 @@
 # Brave Browser Previews Flake
 
-[![Update Brave Nightly](https://github.com/kcalvelli/brave-browser-previews/actions/workflows/update.yml/badge.svg)](https://github.com/kcalvelli/brave-browser-previews/actions/workflows/update.yml)
+[![Update Brave](https://github.com/kcalvelli/brave-browser-previews/actions/workflows/update.yml/badge.svg)](https://github.com/kcalvelli/brave-browser-previews/actions/workflows/update.yml)
 
-A **Nix Flake** that provides the latest **Nightly**, **Beta**, and **Origin Nightly** versions of Brave Browser for Linux (`x86_64-linux`).
+A **Nix Flake** that ships every Brave there is for Linux (`x86_64-linux`): **Stable**, **Beta**, **Nightly**, **Origin Beta**, and **Origin Nightly**.
 
-This repository is automatically updated daily to track the official [Brave GitHub Releases](https://github.com/brave/brave-browser/releases) and Brave's apt repositories.
+The name says "previews" because that's how it started. Then nixpkgs dropped `brave` (none of its maintainers had commit access to push the security fixes through), so stable moved in too. It's all the Braves now. The name stays because renaming a flake input breaks everyone downstream.
 
-## Features
+It updates itself daily from the official [Brave GitHub Releases](https://github.com/brave/brave-browser/releases) and Brave's apt repositories.
 
-- **Automated Updates**: A GitHub Action runs daily to fetch the latest versions and SRI hashes directly from Brave's release API and apt index.
-- **Three Channels**:
-    - **`brave-nightly`**: The bleeding-edge version. *Note: Enabled with `--enable-features=BraveAIChatAgentProfile` by default for AI Agent testing.*
-    - **`brave-beta`**: The beta channel release.
-    - **`brave-origin-nightly`**: [Brave Origin](https://brave.com/origin/) nightly — Brave's privacy/adblock/Shields stack without the extra features (Rewards, Wallet, AI, etc.).
-- **Pure Flake**: Designed to be easily consumed as a flake input in your NixOS or Home Manager configuration.
+## Packages
+
+| Package | Channel | Source |
+|---|---|---|
+| `brave` | Stable | `brave-browser-apt-release.s3.brave.com` |
+| `brave-beta` | Beta | GitHub releases |
+| `brave-nightly` | Nightly | GitHub releases |
+| `brave-origin-beta` | [Origin](https://brave.com/origin/) Beta | `brave-browser-apt-beta.s3.brave.com` |
+| `brave-origin-nightly` | [Origin](https://brave.com/origin/) Nightly | `brave-browser-apt-nightly.s3.brave.com` |
+
+Origin is Brave's privacy, adblock, and Shields stack without the extras (Rewards, Wallet, AI, and so on).
+
+### `brave` is a drop-in for the old nixpkgs package
+
+- Same binary (`bin/brave`), desktop file (`brave-browser.desktop`), icon, and WM class (`brave-browser`). Window rules and default-browser settings keep working as before.
+- `commandLineArgs` is accepted at the `callPackage` layer, so `brave.override { commandLineArgs = "..."; }` works. That's what home-manager's `programs.brave` calls, so it works unchanged once the overlay is applied.
 
 ## Usage
 
 ### 1. Add Input
 
-Add this repository to your `flake.nix` inputs:
-
 ```nix
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    
-    # Add brave-browser-previews
-    brave-previews.url = "github:kcalvelli/brave-browser-previews";
-    
-    # Recommended: Follow your system's nixpkgs to avoid duplicate store paths
-    brave-previews.inputs.nixpkgs.follows = "nixpkgs";
-  };
 
-  outputs = { self, nixpkgs, brave-previews, ... }: {
-    # Your configuration
+    brave-previews.url = "github:kcalvelli/brave-browser-previews";
+    # Recommended: follow your system's nixpkgs to avoid duplicate store paths
+    brave-previews.inputs.nixpkgs.follows = "nixpkgs";
   };
 }
 ```
 
-### 2. NixOS Configuration (Module)
+### 2. Overlay (bring back `pkgs.brave`)
 
-This flake exports a NixOS module that allows you to configure Brave Nightly and Beta similarly to the standard `programs.chromium` module.
+The overlay adds all five packages to `pkgs`. Use it when something still expects `pkgs.brave`, such as home-manager's `programs.brave`:
 
 ```nix
-{ pkgs, brave-previews, ... }:
-
 {
-  imports = [
-    brave-previews.nixosModules.default
-  ];
+  nixpkgs.overlays = [ brave-previews.overlays.default ];
+}
+```
+
+```nix
+# home.nix — with the overlay applied (and useGlobalPkgs, if you use it)
+programs.brave = {
+  enable = true;
+  commandLineArgs = [ "--password-store=detect" ];
+};
+```
+
+### 3. NixOS Module (preview channels)
+
+The NixOS module applies the overlay and adds `programs.<channel>` options for the preview channels, modeled on `programs.chromium`. Stable isn't one of them. Use home-manager's `programs.brave` for that, as shown above.
+
+```nix
+{ brave-previews, ... }:
+{
+  imports = [ brave-previews.nixosModules.default ];
 
   programs.brave-nightly = {
     enable = true;
-    extensions = [
-      "cjpalhdlnbpafiamejdnhcphjbkeiagm" # uBlock Origin
-    ];
+    extensions = [ "cjpalhdlnbpafiamejdnhcphjbkeiagm" ]; # uBlock Origin
     defaultSearchProviderSearchURL = "https://search.brave.com/search?q={searchTerms}";
   };
 
-  # You can also configure Beta independently
   programs.brave-beta.enable = true;
-
-  # Or Brave Origin Nightly
   programs.brave-origin-nightly.enable = true;
+  programs.brave-origin-beta.enable = true;
 }
 ```
 
-### 3. Install Packages (Ad-hoc)
-
-If you just want the packages without the configuration module:
+### 4. Packages (Ad-hoc)
 
 ```nix
 { pkgs, brave-previews, ... }:
-
 {
-  environment.systemPackages = [
-    brave-previews.packages.${pkgs.system}.brave-nightly
+  environment.systemPackages = with brave-previews.packages.${pkgs.stdenv.hostPlatform.system}; [
+    brave
+    brave-nightly
   ];
 }
 ```
 
-#### Home Manager
-
-In your `home.nix`:
-
-```nix
-{ pkgs, brave-previews, ... }:
-
-{
-  home.packages = [
-    brave-previews.packages.${pkgs.system}.brave-nightly
-  ];
-}
-```
-
-### 4. Run Directly
-
-You can also run the browsers without installing them:
+### 5. Run Directly
 
 ```bash
-# Run Nightly
-nix run github:kcalvelli/brave-browser-previews#brave-nightly
-
-# Run Beta
+nix run github:kcalvelli/brave-browser-previews#brave
 nix run github:kcalvelli/brave-browser-previews#brave-beta
-
-# Run Origin Nightly
+nix run github:kcalvelli/brave-browser-previews#brave-nightly
+nix run github:kcalvelli/brave-browser-previews#brave-origin-beta
 nix run github:kcalvelli/brave-browser-previews#brave-origin-nightly
 ```
 
 ## How It Works
 
-1.  **`update.sh`**: A script queries the Brave GitHub API for Nightly/Beta releases, and reads `brave-browser-apt-nightly.s3.brave.com`'s `Packages` index for Origin Nightly (which isn't published to GitHub releases).
-2.  **Prefetch**: It uses `nix-prefetch-url` to generate the correct SRI hash.
-3.  **Update**: It modifies the matching file under `pkgs/` with the new version and hash.
-4.  **CI/CD**: The `.github/workflows/update.yml` workflow runs this script daily, verifies the build using `nix build`, and commits the changes to the `master` branch.
+1. **`update.sh`** reads Brave's apt `Packages` indexes for Stable and both Origin channels, and the GitHub releases API for Nightly and Beta.
+2. **Prefetch**: `nix-prefetch-url` produces the hash.
+3. **Update**: the matching file under `pkgs/` gets the new version, hash, and URL.
+4. **CI/CD**: `.github/workflows/update.yml` runs the script daily, checks that everything builds, and commits to `master`.
+
+All five channels are built by `pkgs/build-brave.nix`, which repackages the upstream `.deb`.
 
 ## License
 

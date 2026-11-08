@@ -25,9 +25,11 @@ jobs:
 
       - name: Verify build
         run: |
+          nix build .#brave --accept-flake-config
           nix build .#brave-nightly --accept-flake-config
           nix build .#brave-beta --accept-flake-config
           nix build .#brave-origin-nightly --accept-flake-config
+          nix build .#brave-origin-beta --accept-flake-config
 
       - name: Commit and Push changes
         uses: stefanzweifel/git-auto-commit-action@v5
