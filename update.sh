@@ -4,14 +4,15 @@ set -e
 
 update_channel() {
   local CHANNEL=$1
-  local TARGET_FILE=$2
+  local PKG_NAME=$2
+  local TARGET_FILE=$3
 
   echo "Updating $CHANNEL..."
 
   # Fetch the latest release data for the channel
   # We filter by name containing the channel (Nightly/Beta) and having an amd64 .deb asset
-  RELEASE_DATA=$(curl -s "https://api.github.com/repos/brave/brave-browser/releases?per_page=100" | jq -r --arg channel "$CHANNEL" \
-    'map(select(.name? and (.name | contains($channel)) and .assets? and (.assets | any(.name | endswith("_amd64.deb"))))) 
+  RELEASE_DATA=$(curl -s "https://api.github.com/repos/brave/brave-browser/releases?per_page=100" | jq -r --arg channel "$CHANNEL" --arg pkg "$PKG_NAME" \
+    'map(select(.name? and (.name | contains($channel)) and .assets? and (.assets | any(.name | startswith($pkg + "_") and endswith("_amd64.deb"))))) 
     | sort_by(.published_at) 
     | reverse 
     | .[0]
@@ -28,7 +29,10 @@ update_channel() {
   echo "Latest $CHANNEL version: $VERSION"
 
   # Find the amd64 .deb asset URL
-  ASSET_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith("_amd64.deb")) | .browser_download_url' | head -n 1)
+  # Releases carry both brave-browser-<channel> and brave-origin-<channel> debs,
+  # in no promised order. Match the package by name; "first .deb" is how beta
+  # ended up shipping Origin.
+  ASSET_URL=$(echo "$RELEASE_DATA" | jq -r --arg pkg "$PKG_NAME" '.assets[] | select(.name | startswith($pkg + "_") and endswith("_amd64.deb")) | .browser_download_url' | head -n 1)
 
   if [ -z "$ASSET_URL" ]; then
     echo "Error: Could not find amd64 .deb asset for version $VERSION"
@@ -101,7 +105,7 @@ update_apt_channel() {
 }
 
 update_apt_channel "brave-browser-apt-release.s3.brave.com" "brave-browser" "pkgs/brave.nix"
-update_channel "Nightly" "pkgs/brave-nightly.nix"
-update_channel "Beta" "pkgs/brave-beta.nix"
+update_channel "Nightly" "brave-browser-nightly" "pkgs/brave-nightly.nix"
+update_channel "Beta" "brave-browser-beta" "pkgs/brave-beta.nix"
 update_apt_channel "brave-browser-apt-nightly.s3.brave.com" "brave-origin-nightly" "pkgs/brave-origin-nightly.nix"
 update_apt_channel "brave-browser-apt-beta.s3.brave.com" "brave-origin-beta" "pkgs/brave-origin-beta.nix"
