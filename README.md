@@ -15,8 +15,8 @@ It updates itself daily from the official [Brave GitHub Releases](https://github
 | `brave` | Stable | `brave-browser-apt-release.s3.brave.com` |
 | `brave-beta` | Beta | GitHub releases |
 | `brave-nightly` | Nightly | GitHub releases |
-| `brave-origin-beta` | [Origin](https://brave.com/origin/) Beta | `brave-browser-apt-beta.s3.brave.com` |
-| `brave-origin-nightly` | [Origin](https://brave.com/origin/) Nightly | `brave-browser-apt-nightly.s3.brave.com` |
+| `brave-origin-beta` | [Origin](https://brave.com/origin/) Beta | GitHub releases |
+| `brave-origin-nightly` | [Origin](https://brave.com/origin/) Nightly | GitHub releases |
 
 Origin is Brave's privacy, adblock, and Shields stack without the extras (Rewards, Wallet, AI, and so on).
 
@@ -104,7 +104,7 @@ nix run github:kcalvelli/brave-browser-previews#brave-origin-nightly
 
 ## How It Works
 
-1. **`update.sh`** reads Brave's apt `Packages` indexes for Stable and both Origin channels, and the GitHub releases API for Nightly and Beta.
+1. **`update.sh`** reads the release apt repo's `Packages` index for Stable. For the four preview channels it uses the GitHub releases API, since their apt repos trail it by days. Each GitHub release carries both the `brave-browser-*` and `brave-origin-*` debs, so assets are matched by package name.
 2. **Prefetch**: `nix-prefetch-url` produces the hash.
 3. **Update**: the matching file under `pkgs/` gets the new version, hash, and URL.
 4. **CI/CD**: `.github/workflows/update.yml` runs the script daily, checks that everything builds, and commits to `master`.

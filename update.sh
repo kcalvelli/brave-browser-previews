@@ -63,8 +63,9 @@ update_apt_channel() {
 
   echo "Updating $PKG_NAME from $APT_HOST..."
 
-  # Brave Origin isn't published to GitHub releases, so we read the apt
-  # repo's Packages index directly and pick the highest version.
+  # Stable reads the release apt repo's Packages index and takes the highest
+  # version. The preview channels don't come through here: their apt repos
+  # trail GitHub by days.
   local PACKAGES_URL="https://${APT_HOST}/dists/stable/main/binary-amd64/Packages"
   local PACKAGES
   PACKAGES=$(curl -s "$PACKAGES_URL")
@@ -107,5 +108,5 @@ update_apt_channel() {
 update_apt_channel "brave-browser-apt-release.s3.brave.com" "brave-browser" "pkgs/brave.nix"
 update_channel "Nightly" "brave-browser-nightly" "pkgs/brave-nightly.nix"
 update_channel "Beta" "brave-browser-beta" "pkgs/brave-beta.nix"
-update_apt_channel "brave-browser-apt-nightly.s3.brave.com" "brave-origin-nightly" "pkgs/brave-origin-nightly.nix"
-update_apt_channel "brave-browser-apt-beta.s3.brave.com" "brave-origin-beta" "pkgs/brave-origin-beta.nix"
+update_channel "Nightly" "brave-origin-nightly" "pkgs/brave-origin-nightly.nix"
+update_channel "Beta" "brave-origin-beta" "pkgs/brave-origin-beta.nix"
