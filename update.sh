@@ -100,6 +100,7 @@ update_apt_channel() {
   echo "--------------------------------------------------"
 }
 
+update_apt_channel "brave-browser-apt-release.s3.brave.com" "brave-browser" "pkgs/brave.nix"
 update_channel "Nightly" "pkgs/brave-nightly.nix"
 update_channel "Beta" "pkgs/brave-beta.nix"
 update_apt_channel "brave-browser-apt-nightly.s3.brave.com" "brave-origin-nightly" "pkgs/brave-origin-nightly.nix"
